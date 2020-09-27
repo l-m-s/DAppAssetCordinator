@@ -37,7 +37,7 @@ contract DappAssetCordinator {
     // MARKET AREA
     //Idee für dne Markt
     MarktSell[] public marketPlace;
-    uint256 internal numberOfAssetsForSale = 0;
+    uint256 internal numberOfAssetsOnMarket = 0;
     mapping(uint256 => uint256) public idToSpotOnMarket;
 
     struct MarktSell {
@@ -51,9 +51,8 @@ contract DappAssetCordinator {
         return marketPlace[idToSpotOnMarket[id]].price;
         }
     }
-    
-    //  -   -   -   -^   -   -^ Market ^ -   -^   -   -   -   -   -
 
+    //  -   -   -   -^   -   -^ Market ^ -   -^   -   -   -   -   -
     //HistoryOfOwner
     //  -   -   -   -   -   - Transaction History -   -   -   -   -   -   -   -   -   -
     mapping(uint256 => address[])  addToHistoryOfOwners;
@@ -68,8 +67,8 @@ contract DappAssetCordinator {
         return(address(0),0);
     }
 
-    function getHistoryLength(uint _id) public returns(uint length){
-        addToDateOfTransfer[_id].length;
+    function getHistoryLength(uint _id) public view returns(uint length){
+       length = addToDateOfTransfer[_id].length;
     }
     
     //gets called when Asset is created or changes user 
@@ -172,9 +171,9 @@ contract DappAssetCordinator {
         // MarktSell memory sellStruct = marketPlace[postionToRemove];
         
         // - - - - - -delete AssetSell and place last MarketSell at now emptpy Position ---
-        if(numberOfAssetsForSale > 1&& postionToRemove >= 0&& _id !=0){
+        if(numberOfAssetsOnMarket > 1&& postionToRemove >= 0&& _id !=0){
          //get last Element of Arry 
-         MarktSell storage sellAtLastSpot =  marketPlace[numberOfAssetsForSale-1];
+         MarktSell storage sellAtLastSpot =  marketPlace[numberOfAssetsOnMarket-1];
           
          marketPlace[postionToRemove] = sellAtLastSpot;
          //set last Element to empty spot 
@@ -188,11 +187,11 @@ contract DappAssetCordinator {
          //
         }
         
-         numberOfAssetsForSale--;
+         numberOfAssetsOnMarket--;
          //if you substact before its fine just add -1 
-         //delete marketPlace[numberOfAssetsForSale].price;
-         delete marketPlace[numberOfAssetsForSale].assetID;
-         delete marketPlace[numberOfAssetsForSale];
+         //delete marketPlace[numberOfAssetsOnMarket].price;
+         delete marketPlace[numberOfAssetsOnMarket].assetID;
+         delete marketPlace[numberOfAssetsOnMarket];
          
          //delte last assetsell of Arry (we have to at the moment)
          //new numberOfAssets 
@@ -206,8 +205,8 @@ contract DappAssetCordinator {
         address addOwner  = idToOwnerAddress[_id];
         require(addOwner == msg.sender, "only Owner can remove the Asset form marketPlace");
         require(isAssetForSale(_id),"Asset is not on the Market");
-        require(numberOfAssetsForSale>0 &&_id != 0, "there are no selling articel on the Market");
-        bool fatalErro =  numberOfAssetsForSale < 0;
+        require(numberOfAssetsOnMarket>0 &&_id != 0, "there are no selling articel on the Market");
+        bool fatalErro =  numberOfAssetsOnMarket < 0;
         require(fatalErro, "fatle error there are a negtive amound of assets");
         removeFromMarket(idOfAsset);
         }
@@ -264,7 +263,7 @@ contract DappAssetCordinator {
         //require(_id <= 0,"id  is zero before change sellAsset method is negativ");
         // important that you cant sell your asset multiple times 
         //postion will allways be one more than the assets on the market 
-        uint positionToAdd = numberOfAssetsForSale;
+        uint positionToAdd = numberOfAssetsOnMarket;
         //we need to check weather we can only use push 
          if (positionToAdd < marketPlace.length){
              //next free Space is at that space
@@ -277,7 +276,7 @@ contract DappAssetCordinator {
             marketPlace.push(MarktSell(_id,price,owner));
          }
          idToSpotOnMarket[_id] = positionToAdd;
-         numberOfAssetsForSale++;
+         numberOfAssetsOnMarket++;
          //require(positionToAdd <= 0,"postion to add is zero in sellAsset");
          emit  NewAssetOnMarket(
             _id,
@@ -294,43 +293,48 @@ contract DappAssetCordinator {
     }
 
     //TODO! returns Arikel IDs available for sale need mapping to get real IDs
-    function getAllAssetIdsOnMarket()
+    function getAssetIdsOnMarket()
         public
         view
         returns (uint256[] memory idArray)
     {
-        uint256[] memory ids = new uint256[](numberOfAssetsForSale);
-        for (uint256 i = 0; i < numberOfAssetsForSale; i++) {
+        uint256[] memory ids = new uint256[](numberOfAssetsOnMarket);
+        for (uint256 i = 0; i < numberOfAssetsOnMarket; i++) {
             ids[i] = marketPlace[i].assetID;
         }
         idArray = ids;
     }
 
-    //TODO! use Mapping to get the ID Array and convert with positionMapping and countofAssetsOwned by Account
-    function getAllAssetIdsByAddress(address _address)
-        public
+    //retruns id , pice and owner of Asset on the Market
+    function getMarketSellObject(uint spotInMarket) public view returns(uint,uint,address ){
+         return (marketPlace[spotInMarket].assetID, marketPlace[spotInMarket].price,marketPlace[spotInMarket].owner);
+    }
+
+    function getAssetIDsOfAddress(address _address)
+        public view
         returns (uint256[] memory)
     {
         return addressToIDArrary[_address];
     }
 
     function getAssetByID(uint id) public view returns(string memory name , string memory description) {
-       return (allAssets[id].name,allAssets[id].description);
+       return (allAssets[id].name, allAssets[id].description);
     }
 
     //TODO! use allAssets and use totallAccountofAssets
     function getAllAssetsExisting() public returns (uint256[] memory) {}
 
-    //TODO!  delte Object by owner mapping and restructuring COMPLICATED! Problem!
+
+    //Should work  delte Object by owner mapping and restructuring COMPLICATED! Problem!
     function deleteAssetByID(uint256 _assetID) public onlyOwner(_assetID) {
        uint postionToRemove = idToSpotOnMarket[_assetID];
          idToSpotOnMarket[_assetID] = 0;
         // MarktSell memory sellStruct = marketPlace[postionToRemove];
         
         // - - - - - -delete AssetSell and place last MarketSell at now emptpy Position ---
-        if(numberOfAssetsForSale > 1&& postionToRemove >= 0&& _assetID !=0){
+        if(numberOfAssetsOnMarket > 1&& postionToRemove >= 0&& _assetID !=0){
          //get last Element of Arry 
-         MarktSell storage sellAtLastSpot =  marketPlace[numberOfAssetsForSale-1];
+         MarktSell storage sellAtLastSpot =  marketPlace[numberOfAssetsOnMarket-1];
           
          marketPlace[postionToRemove] = sellAtLastSpot;
          //set last Element to empty spot 
@@ -346,14 +350,14 @@ contract DappAssetCordinator {
          //
         }
         
-         numberOfAssetsForSale--;
+         numberOfAssetsOnMarket--;
          //if you substact before its fine just add -1 
-         //delete marketPlace[numberOfAssetsForSale].price;
-         delete marketPlace[numberOfAssetsForSale].assetID;
-         delete marketPlace[numberOfAssetsForSale];
+         //delete marketPlace[numberOfAssetsOnMarket].price;
+         delete marketPlace[numberOfAssetsOnMarket].assetID;
+         delete marketPlace[numberOfAssetsOnMarket];
         //!Problem dont works! realy good
     }
-
+    
     //Problem! check if the returns of ID is good idea
     function sellDirectToTheMarket(
         string memory _name,
@@ -367,7 +371,7 @@ contract DappAssetCordinator {
 
     function isAssetForSale(uint256 _id) public view returns (bool forSale) {
         uint256 position = idToSpotOnMarket[_id];
-        if (position == 0 && numberOfAssetsForSale == 0) {
+        if (position == 0 && numberOfAssetsOnMarket == 0) {
             return false;
         } else if (marketPlace[position].assetID == _id) {
             return true;
@@ -375,8 +379,8 @@ contract DappAssetCordinator {
         return false;
     }
 
-    function getNumberOfAssetsForSale() public view returns (uint256) {
-        return numberOfAssetsForSale;
+    function getNumberOfAssetsOnMarket() public view returns (uint256) {
+        return numberOfAssetsOnMarket;
     }
 
     event NewAssetOnMarket(
@@ -402,6 +406,8 @@ contract DappAssetCordinator {
     );
 
     event AssetSoldOnMarket(uint256 assetID);
+
+
     //checks if the asset id is really for sell
     modifier safeBuying(uint256 id) {
         require(
